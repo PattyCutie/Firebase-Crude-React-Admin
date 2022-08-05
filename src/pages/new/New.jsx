@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import "./new.scss";
 import Sidebar from "../../components/sidebar/Sidebar";
 import Navbar from "../../components/navbar/Navbar";
@@ -11,21 +11,96 @@ import {
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
-import { db } from "../../firebase";
+import { auth, db, storage } from "../../firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 function New({ inputs, title }) {
   const [file, setFile] = useState("");
   //console.log(file)
 
-  // Add a new document in collection "<*collection name*>"
+  // woring with form input*
+  const [data, setData] = useState({});
+
+  // Prevent file img upload 
+  const [per, setPer] =useState(null)
+
+  useEffect(() => {
+    const uploadFile = () => {
+      const name = new Date().getTime() + file.name;
+      //console.log(name)
+      const storageRef = ref(storage, file.name);
+
+      // from google Doc file upload
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      // Register three observers:
+      // 1. 'state_changed' observer, called any time the state changes
+      // 2. Error observer, called on failure
+      // 3. Completion observer, called on successful completion
+      uploadTask.on(
+        "state_changed",
+        (snapshot) => {
+          // Observe state change events such as progress, pause, and resume
+          // Get task progress, including the number of bytes uploaded and the total number of bytes to be uploaded
+          const progress =
+            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          console.log("Upload is " + progress + "% done");
+          // while uploading
+          setPer(progress)
+
+          switch (snapshot.state) {
+            case "paused":
+              console.log("Upload is paused");
+              break;
+            case "running":
+              console.log("Upload is running");
+              break;
+            default:
+              break;
+          }
+        },
+        (error) => {
+          console.log(error)
+          // Handle unsuccessful uploads
+        },
+        () => {
+          // Handle successful uploads on complete
+          // For instance, get the download URL: https://firebasestorage.googleapis.com/...
+          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            //console.log("File available at", downloadURL);
+            setData((prev) => ({
+              ...prev, img:downloadURL
+            }))
+          });
+        }
+      );
+    };
+    file && uploadFile();
+  }, [file]);
+
+  // Add data input
+  const handleInput = (e) => {
+    const id = e.target.id;
+    const value = e.target.value;
+
+    setData({ ...data, [id]: value });
+  };
+  //console.log(data);
+
+  // Add a new document in firebase collection "<*collection name*>"
+
+  //Google Auth > sign in with email and password
   const handleAdd = async (e) => {
     e.preventDefault();
     try {
+      const res = await createUserWithEmailAndPassword(
+        auth,
+        data.email,
+        data.password
+      );
       // add document in collection
-      const res = await addDoc(collection(db, "cities"), {
-        name: "Los Angeles",
-        state: "CA",
-        country: "USA",
+      await setDoc(doc(db, "users", res.user.uid), {
+        ...data,
         timeStamp: serverTimestamp(),
       });
     } catch (err) {
@@ -72,10 +147,15 @@ function New({ inputs, title }) {
               {inputs.map((input) => (
                 <div className="formInput" key={input.id}>
                   <label>{input.label}</label>
-                  <input type={input.type} placeholder={input.placeholder} />
+                  <input
+                    id={input.id}
+                    type={input.type}
+                    placeholder={input.placeholder}
+                    onChange={handleInput}
+                  />
                 </div>
               ))}
-              <button type="submit">Send</button>
+              <button disabled={per !== null && per < 100 } type="submit">Send</button>
             </form>
           </div>
         </div>

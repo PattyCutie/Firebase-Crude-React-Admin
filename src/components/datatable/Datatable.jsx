@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import "./datatable.scss";
 import { DataGrid } from "@mui/x-data-grid";
-
 import { userColumns, userRows } from "../../datatableSource";
 import { Link } from "react-router-dom";
-
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../firebase";
 
 /*const columns = [
   { field: "id", headerName: "ID", width: 70 },
@@ -46,12 +46,24 @@ const rows = [
 */
 
 const Datatable = () => {
+  //const [ data, setData ] = useState(userRows)
+  //fetch data collection from firebase
+  const [data, setData] = useState([]);
 
-  const [ data, setData ] = useState(userRows)
+  useEffect(() => {
+    const fetchData = async () => {
+      // firebase Doc Get all documents in a collection
+      const querySnapshot = await getDocs(collection(db, "users"));
+      querySnapshot.forEach((doc) => {
+        // doc.data() is never undefined for query doc snapshots
+        console.log(doc.id, " => ", doc.data());
+      });
+    };
+  }, []);
 
   const handleDelete = (id) => {
-    setData(data.filter((item) => item.id !== id))
-  }
+    setData(data.filter((item) => item.id !== id));
+  };
 
   //manage list
   const actionColumn = [
@@ -61,15 +73,20 @@ const Datatable = () => {
       renderCell: (params) => {
         return (
           <div className="cellAction">
-            <Link to="/users/test" className='link'> 
-            <div className="viewButton">View</div>
+            <Link to="/users/test" className="link">
+              <div className="viewButton">View</div>
             </Link>
-            <div className="deleteButton" onClick={() => handleDelete(params.row.id)}>Delete</div>
+            <div
+              className="deleteButton"
+              onClick={() => handleDelete(params.row.id)}
+            >
+              Delete
+            </div>
           </div>
-        )
-      }
-    }
-  ]
+        );
+      },
+    },
+  ];
 
   return (
     <div className="datatable">
@@ -80,7 +97,7 @@ const Datatable = () => {
         </Link>
       </div>
       <DataGrid
-      className="dataGrid"
+        className="dataGrid"
         rows={data}
         columns={userColumns.concat(actionColumn)} //concat will combind arrays
         pageSize={9}
