@@ -14,6 +14,7 @@ import {
 import { auth, db, storage } from "../../firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { useNavigate } from "react-router-dom";
 
 function New({ inputs, title }) {
   const [file, setFile] = useState("");
@@ -24,6 +25,9 @@ function New({ inputs, title }) {
 
   // Prevent file img upload 
   const [per, setPer] =useState(null)
+
+  // Use nevigate hooks to get back to previous page
+  const navigate = useNavigate()
 
   useEffect(() => {
     const uploadFile = () => {
@@ -103,6 +107,9 @@ function New({ inputs, title }) {
         ...data,
         timeStamp: serverTimestamp(),
       });
+      // after adding document then nevigate to previous page
+      navigate(-1)
+
     } catch (err) {
       // catch err
       console.log();

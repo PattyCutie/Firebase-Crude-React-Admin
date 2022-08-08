@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import "./datatable.scss";
 import { DataGrid } from "@mui/x-data-grid";
-import { userColumns, userRows } from "../../datatableSource";
+import { userColumns } from "../../datatableSource";
 import { Link } from "react-router-dom";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, doc, deleteDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
+import { reauthenticateWithRedirect } from "firebase/auth";
 
 /*const columns = [
   { field: "id", headerName: "ID", width: 70 },
@@ -51,18 +52,46 @@ const Datatable = () => {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      // firebase Doc Get all documents in a collection
-      const querySnapshot = await getDocs(collection(db, "users"));
-      querySnapshot.forEach((doc) => {
-        // doc.data() is never undefined for query doc snapshots
-        console.log(doc.id, " => ", doc.data());
-      });
-    };
-  }, []);
+    // const fetchData = async () => {
+    //   let list = []
+    //   try {
+    //     const querySnapshot = await getDocs(collection(db, "users"))
+    //     querySnapshot.forEach((doc) => {
+    //       list.push({ id: doc.id, ...doc.data()})
+    //     })
+    //     setData(list)
+    //     //console.log(list)
+    //   } catch(err) {
+    //     console.log(err)
+    //   }
+    // }
+    // fetchData()
+    // instead fetching data only one time, we can use Listen to realtime database by call onSnapshot()
+    const unsub = onSnapshot(collection(db, "users"), (snapShot) =>{
+      let list =[]
+      snapShot.docs.forEach((doc) => {
+        list.push({ id: doc.id, ...doc.data() })
+      })
+      setData(list)
+    }, (err) => {
+       console.log(err)
+    })
+    // Clean up
+    return () => {
+      unsub();
+    }
+  }, [])
 
-  const handleDelete = (id) => {
-    setData(data.filter((item) => item.id !== id));
+  console.log(data)
+
+  //delete user
+  const handleDelete = async (id) => {
+    try {
+      await deleteDoc(doc(db, "users", id))
+      setData(data.filter((item) => item.id !== id));
+    } catch(err) {
+      console.log(err)
+    }
   };
 
   //manage list
